@@ -18,6 +18,36 @@ Choose **Add provider**, select a provider such as Anthropic or OpenAI, enter it
 
 Providers with native authentication need their native credentials instead. Bedrock, Vertex, Azure, and Codex use AWS credentials and a region, an ADC project, an `api-version`, and OAuth respectively; filling only the API-key field does not configure them.
 
+## Configure GitHub Copilot
+
+A Copilot subscription carries no long-lived API key, so the Models page cannot configure this provider from a pasted secret. Signing in through an editor stores a GitHub OAuth token at `~/.config/github-copilot/apps.json`, and the Copilot API accepts only a short-lived token minted from that one.
+
+Mint a token:
+
+```sh
+oauth=$(jq -r 'first(.[].oauth_token)' ~/.config/github-copilot/apps.json)
+curl -sS -H "Authorization: token $oauth" -H "Accept: application/json" \
+  https://api.github.com/copilot_internal/v2/token
+```
+
+The reply carries `token`, an `expires_at` stamp, and an `endpoints.api` value naming the host your account uses — `https://api.individual.githubcopilot.com` for an individual subscription, or an enterprise equivalent. Store `token` in `$DSH_HOME/.credentials.yaml` under a reference of your choice, then declare the route in `$DSH_HOME/settings.yaml`:
+
+```yaml
+llm-pi-ai:
+  providers:
+    github-copilot:
+      apiKeyEnv: COPILOT_API_TOKEN
+      baseURL: https://api.individual.githubcopilot.com
+      headers:
+        Copilot-Integration-Id: vscode-chat
+```
+
+Set `baseURL` whenever `endpoints.api` differs from the installed catalog's default. The `Copilot-Integration-Id` header is always required: Copilot refuses a request that arrives without editor identification, reporting `missing Editor-Version header for IDE auth`.
+
+A minted token expires about thirty minutes after it is issued, so repeat the exchange on a timer or before a long session. The credentials document hot-reloads, so a replacement reaches a running server without a restart.
+
+Copilot bills these requests against your subscription, and it is not an editor integration; confirm your organization's terms permit that use.
+
 ## Add a custom provider
 
 Choose **Add a custom provider** for a company gateway, self-hosted server, or provider absent from the installed catalog. Supply a lowercase Provider ID, base URL, API protocol, credential, and at least one model.
@@ -88,6 +118,8 @@ If a saved default names a provider that was deleted, the composer displays **Se
 ## Troubleshooting
 
 - **`MISSING_CREDENTIAL`** — Store the provider key through the Models page or supply the referenced environment variable.
+- **Copilot reports `missing Editor-Version header for IDE auth`** — The route sends no editor identification. Add the `Copilot-Integration-Id` header shown above.
+- **Copilot requests start failing after about half an hour** — The minted token expired. Repeat the exchange; the stored replacement applies without a restart.
 - **`UNKNOWN_MODEL`** — Select a configured model or add the missing model to the custom provider.
 - **Fetching available models returns 401** — Check the key. Model discovery calls the OpenAI-compatible `GET /models` endpoint; enter models manually for endpoints that do not provide it.
 - **An image is refused before sending** — The model declares no image modality. Give a custom provider's model `input: [text, image]`; DeepSeek's own chat-completions route is text-only and cannot be configured otherwise.

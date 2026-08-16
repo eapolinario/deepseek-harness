@@ -18,6 +18,36 @@
 
 使用原生认证的提供方需要各自的原生凭据。Bedrock、Vertex、Azure 和 Codex 分别使用 AWS 凭据与区域、ADC 项目、`api-version` 和 OAuth；只填写 API 密钥字段无法完成配置。
 
+## 配置 GitHub Copilot
+
+Copilot 订阅不提供长期有效的 API 密钥，因此模型页无法仅凭粘贴的密文完成该提供方的配置。通过编辑器登录会把一个 GitHub OAuth token 存放在 `~/.config/github-copilot/apps.json`，而 Copilot API 只接受由它铸造出的短期 token。
+
+铸造一个 token：
+
+```sh
+oauth=$(jq -r 'first(.[].oauth_token)' ~/.config/github-copilot/apps.json)
+curl -sS -H "Authorization: token $oauth" -H "Accept: application/json" \
+  https://api.github.com/copilot_internal/v2/token
+```
+
+响应中包含 `token`、`expires_at` 时间戳，以及标明你的账户所用主机的 `endpoints.api` 值——个人订阅为 `https://api.individual.githubcopilot.com`，企业订阅则是对应的企业地址。把 `token` 以你选定的引用名存入 `$DSH_HOME/.credentials.yaml`，然后在 `$DSH_HOME/settings.yaml` 中声明该路由：
+
+```yaml
+llm-pi-ai:
+  providers:
+    github-copilot:
+      apiKeyEnv: COPILOT_API_TOKEN
+      baseURL: https://api.individual.githubcopilot.com
+      headers:
+        Copilot-Integration-Id: vscode-chat
+```
+
+只要 `endpoints.api` 与已安装目录的默认值不同，就需要设置 `baseURL`。`Copilot-Integration-Id` 请求头则始终必需：Copilot 会拒绝不带编辑器标识的请求，并报告 `missing Editor-Version header for IDE auth`。
+
+铸造出的 token 在签发约三十分钟后过期，因此请用定时任务重复该交换，或在长会话开始前重新铸造。凭据文档支持热重载，因此替换后的值无需重启即可被运行中的服务器采用。
+
+Copilot 会按你的订阅计费这些请求，而这并非编辑器集成；请确认你所在组织的条款允许这种用法。
+
 ## 添加自定义提供方
 
 对于公司网关、自建服务器或已安装目录中不存在的提供方，选择**添加自定义提供方**。提供小写 Provider ID、基础 URL、API 协议、凭据和至少一个模型。
@@ -88,6 +118,8 @@ llm-pi-ai:
 ## 排错
 
 - **`MISSING_CREDENTIAL`**：通过模型页存储提供方密钥，或提供被引用的环境变量。
+- **Copilot 报告 `missing Editor-Version header for IDE auth`**：该路由未发送编辑器标识。请添加上文所示的 `Copilot-Integration-Id` 请求头。
+- **Copilot 请求在约半小时后开始失败**：铸造出的 token 已过期。请重复该交换；存储的替换值无需重启即可生效。
 - **`UNKNOWN_MODEL`**：选择已配置的模型，或向自定义提供方添加缺失的模型。
 - **获取可用模型返回 401**：检查密钥。模型发现会调用 OpenAI 兼容的 `GET /models` 端点；对于不提供该端点的服务，请手动输入模型。
 - **图片在发送前被拒绝**：该模型未声明图片模态。请给自定义提供方的模型加上 `input: [text, image]`；DeepSeek 自身的 chat-completions 路由是纯文本的，且无法通过配置改变。
