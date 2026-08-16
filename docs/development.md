@@ -12,6 +12,7 @@ The setup tutorial takes a new contributor from prerequisites to a checked check
 - Corepack-enabled pnpm. The repo pins `pnpm@11.7.0` in `package.json`; run `corepack enable` if `pnpm --version` does not resolve through Corepack.
 - Git 2.26 or newer; hook setup enables Git's worktree-specific configuration extension.
 - Optional: a DeepSeek API key for the Web, headless, and ACP automation demos and real-API e2e tests.
+- Optional: [Nix development shells](#nix-development-shells) supply the prerequisites above from the repository flake instead of host installs.
 
 ### First-time setup
 
@@ -97,6 +98,22 @@ DEEPSEEK_BASE_URL=https://... # optional
 ```
 
 `DEEPSEEK_BASE_URL` is optional and defaults to the public API. Never commit real credentials. The real-API e2e suites self-skip when `DEEPSEEK_API_KEY` is not set.
+
+### Nix development shells
+
+[flake.nix](../flake.nix) exports development shells that carry the prerequisites, so the host installs only Nix with flakes enabled. `nix develop` enters the default shell, and `nix develop .#<name>` selects another; [direnv](https://direnv.net) users get the same environment on entering the directory from the committed `.envrc` after one `direnv allow`.
+
+| Shell | Node.js | Additional toolchain |
+|---|---|---|
+| `default`, `node26` | 26 | — |
+| `node24` | 24 | — |
+| `node22` | 22 | — |
+| `python` | 26 | `uv`, for the [Python SDK workflows](../python/development.md) |
+| `fhs` | 26 | An FHS filesystem layout, for NixOS hosts without `nix-ld` |
+
+Every shell provides Git, `pnpm`, and the `python3`, `make`, and C++ toolchain that node-gyp compiles `node-pty` and `koffi` with; Linux shells add `bwrap`, the runner the [local sandbox](../packages/sandbox/sandbox-local/README.md) probes first. `npm_config_nodedir` points at the shell's Node.js, so those native builds use its headers instead of downloading a tarball per Node version. The `pnpm` on `PATH` is a bootstrap: pnpm manages package-manager versions itself, so inside this repository it delegates to the `packageManager` pin and `pnpm --version` reports that version.
+
+The Node.js in every shell is the official nodejs.org build, checksum-pinned in the flake, because the Cordis loader reaches Node's internal ESM loader through the prebuilt `node-addon-require-builtin` addon. That addon recognizes only the getter machine code the official builds emit and refuses a nixpkgs-compiled Node with `Unsupported/no-getter`; the loader then resolves bare plugin names from `vendor/loader`'s own directory rather than the composing bundle's, and a source launch dies on the first runtime-mounted entry whose package lives in a bundle's pnpm-isolated `node_modules`. Dependency binaries that npm ships as prebuilt ELF executables — esbuild, oxlint, lefthook — still need `fhs` or `nix-ld` on NixOS; the [Nix flake Agent Note](../.agents/notes/implemented/process/2026-08-15-nix-flake-dev-shells.md) owns both decisions.
 
 ### Git integrations
 

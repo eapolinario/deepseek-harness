@@ -12,6 +12,7 @@
 - 启用了 Corepack 的 pnpm。仓库在 `package.json` 中固定使用 `pnpm@11.7.0`；如果 `pnpm --version` 无法通过 Corepack 解析，请先运行 `corepack enable`。
 - Git 2.26 或更高版本；钩子设置会启用 Git 的 worktree 专属配置扩展。
 - 可选：一个 DeepSeek API key，用于 Web、headless 和 ACP（Agent Client Protocol）自动化 agent（智能体）演示以及真实 API 的 e2e 测试。
+- 可选：[Nix 开发 shell](#nix-development-shells) 由仓库 flake 提供上述前置条件，无需在宿主机上逐项安装。
 
 ### 首次搭建
 
@@ -97,6 +98,22 @@ DEEPSEEK_BASE_URL=https://... # optional
 ```
 
 `DEEPSEEK_BASE_URL` 可选，默认为公开 API。请勿提交真实凭证。未设置 `DEEPSEEK_API_KEY` 时，真实 API 的 e2e 套件会自动跳过。
+
+### Nix 开发 shell<a id="nix-development-shells"></a>
+
+[flake.nix](../flake.nix) 导出携带上述前置条件的开发 shell，因此宿主机只需安装启用了 flakes 的 Nix。`nix develop` 进入默认 shell，`nix develop .#<name>` 选择其他 shell；[direnv](https://direnv.net) 用户在执行一次 `direnv allow` 后，进入该目录即可由已提交的 `.envrc` 获得同一环境。
+
+| Shell | Node.js | 额外工具链 |
+|---|---|---|
+| `default`、`node26` | 26 | — |
+| `node24` | 24 | — |
+| `node22` | 22 | — |
+| `python` | 26 | `uv`，用于 [Python SDK 工作流](../python/development.md) |
+| `fhs` | 26 | FHS 文件系统布局，面向未启用 `nix-ld` 的 NixOS 宿主机 |
+
+每个 shell 都提供 Git、`pnpm`，以及 node-gyp 编译 `node-pty` 和 `koffi` 所需的 `python3`、`make` 和 C++ 工具链；Linux 上的 shell 还提供 `bwrap`，即[本地沙箱](../packages/sandbox/sandbox-local/README.md)最先探测的运行器。`npm_config_nodedir` 指向该 shell 的 Node.js，因此这些原生构建使用它的头文件，而不必为每个 Node 版本下载一份 tarball。`PATH` 上的 `pnpm` 只是引导程序：pnpm 自行管理包管理器版本，因此在本仓库中它会转交给 `packageManager` 锁定的版本，`pnpm --version` 报告的也是该版本。
+
+各 shell 中的 Node.js 都是 nodejs.org 官方构建、并在 flake 中以校验和固定，因为 Cordis loader 通过预编译的 `node-addon-require-builtin` 插件访问 Node 内部 ESM loader。该插件只认得官方构建生成的 getter 机器码，遇到 nixpkgs 编译的 Node 会以 `Unsupported/no-getter` 拒绝；此时 loader 会从 `vendor/loader` 自身目录而非组装该应用的 bundle 解析裸插件名，于是从源码启动会在第一个运行期挂载、且其包位于某个 bundle 的 pnpm 隔离式 `node_modules` 中的条目上失败。npm 以预编译 ELF 可执行文件形式分发的依赖二进制（esbuild、oxlint、lefthook）在 NixOS 上仍需要 `fhs` 或 `nix-ld`；[Nix flake Agent Note](../.agents/notes/implemented/process/2026-08-15-nix-flake-dev-shells.md) 负责这两项决策的依据。
 
 ### Git 集成
 

@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-15-nix-flake-dev-shells.md
+2026-08-15-nix-flake-dev-shells.md: 584adfdc0471d6f881d1d8033badbfc21b9a4339
+2026-08-15-nix-flake-dev-shells.zh.md: bed403933d53699e990d21a5be5f0058ce078806
