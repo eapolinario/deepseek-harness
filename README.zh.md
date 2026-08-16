@@ -34,6 +34,21 @@ pnpm run build
 pnpm dsh web
 ```
 
+### 通过 Nix 从源码运行
+
+仓库的 flake 提供了源码检出所需的工具链，因此宿主机上除了启用 flakes 的 [Nix](https://nixos.org) 之外无需安装任何东西：
+
+```sh
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+cd deepseek-harness
+nix develop
+pnpm install
+pnpm run build
+pnpm dsh web
+```
+
+该 shell 提供 Node.js、Git、`pnpm`（它会转交给 `package.json` 中锁定的版本），以及原生依赖编译所需的编译器。[Nix 开发 shell](docs/development.md#nix-development-shells) 介绍了 Node 版本、Python SDK 与 NixOS 对应的各个 shell。
+
 ## 社区与支持
 
 - 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

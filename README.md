@@ -34,6 +34,21 @@ pnpm run build
 pnpm dsh web
 ```
 
+### Run from source with Nix
+
+The repository flake provides the toolchain the source checkout expects, so nothing has to be installed on the host beyond [Nix](https://nixos.org) with flakes enabled:
+
+```sh
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+cd deepseek-harness
+nix develop
+pnpm install
+pnpm run build
+pnpm dsh web
+```
+
+The shell supplies Node.js, Git, `pnpm` — which delegates to the version pinned in `package.json` — and the compilers the native dependencies build against. [Nix development shells](docs/development.md#nix-development-shells) covers the Node-version, Python SDK, and NixOS shells.
+
 ## Community and support
 
 - Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
