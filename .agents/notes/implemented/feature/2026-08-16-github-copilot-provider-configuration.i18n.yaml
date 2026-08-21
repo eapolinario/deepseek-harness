@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-16-github-copilot-provider-configuration.md
-2026-08-16-github-copilot-provider-configuration.md: 2a4d7ca3e82f56f56934ffee97f3887b42a2cae8
-2026-08-16-github-copilot-provider-configuration.zh.md: b873fd364fe815bbb0d3d744f2d8e650db94cbad
+2026-08-16-github-copilot-provider-configuration.md: cbb21677e2feccf22acf1266746968d3c9a75df9
+2026-08-16-github-copilot-provider-configuration.zh.md: ae2fcede3f0dafdf4d5d8efff635344f2b560611

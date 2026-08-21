@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-[README](../../../../README.md) 中从源码运行的路径假定宿主机已具备受支持范围内的 Node.js、启用了 Corepack 的 pnpm、Git 2.26+，以及 node-gyp 编译 `node-pty` 和 `koffi` 所需的 `python3`、`make` 和 C++ 工具链。逐台宿主机凑齐这些是读者抵达 `pnpm dsh web` 之前的第一道阻碍，它会与 [`engines`](../../../../package.json) 范围和 `packageManager` 锁定版本发生漂移；而在 NixOS 上它会直接失败，因为 npm 分发的预编译 ELF 二进制找不到 `/lib64/ld-linux-x86-64.so.2`。
+[README](../../../../README.zh.md) 中从源码运行的路径假定宿主机已具备受支持范围内的 Node.js、启用了 Corepack 的 pnpm、Git 2.26+，以及 node-gyp 编译 `node-pty` 和 `koffi` 所需的 `python3`、`make` 和 C++ 工具链。逐台宿主机凑齐这些是读者抵达 `pnpm dsh web` 之前的第一道阻碍，它会与 [`engines`](../../../../package.json) 范围和 `packageManager` 锁定版本发生漂移；而在 NixOS 上它会直接失败，因为 npm 分发的预编译 ELF 二进制找不到 `/lib64/ld-linux-x86-64.so.2`。
 
 ## 决策
 
@@ -14,7 +14,7 @@ Status: implemented
 
 `pkgs.pnpm` 是引导程序，而非贡献者实际运行的版本：pnpm 10+ 自行管理包管理器版本，因此在本仓库中它会转交给 `packageManager` 锁定的版本，`pnpm --version` 报告的也是该版本。因此 flake 从不重述锁定的 pnpm 版本，调整该锁定版本也无需改动 flake。
 
-这些 shell 将 `npm_config_nodedir` 设为自身的 Node.js，使 node-gyp 依据这些头文件构建，而不必为每个 Node 版本下载 tarball；Linux 上的 shell 还提供 `bwrap`，即 [`dsh-sandbox-local`](../../../../packages/sandbox/sandbox-local/README.md) 最先探测的运行器。仅限 Linux 的 `fhs` shell 用 `buildFHSEnv` 包裹同一份工具链，面向未启用 `nix-ld` 的 NixOS 宿主机——在那里 esbuild、oxlint 和 lefthook 分发的预编译 ELF 二进制需要一个常规的加载器路径。已提交的 [`.envrc`](../../../../.envrc) 使用 `use flake`，执行一次 `direnv allow` 后默认 shell 即可通过 direnv 加载。
+这些 shell 将 `npm_config_nodedir` 设为自身的 Node.js，使 node-gyp 依据这些头文件构建，而不必为每个 Node 版本下载 tarball；Linux 上的 shell 还提供 `bwrap`，即 [`dsh-sandbox-local`](../../../../packages/sandbox/sandbox-local/README.zh.md) 最先探测的运行器。仅限 Linux 的 `fhs` shell 用 `buildFHSEnv` 包裹同一份工具链，面向未启用 `nix-ld` 的 NixOS 宿主机——在那里 esbuild、oxlint 和 lefthook 分发的预编译 ELF 二进制需要一个常规的加载器路径。已提交的 [`.envrc`](../../../../.envrc) 使用 `use flake`，执行一次 `direnv allow` 后默认 shell 即可通过 direnv 加载。
 
 ## harness 所要求的 Node.js 构建
 

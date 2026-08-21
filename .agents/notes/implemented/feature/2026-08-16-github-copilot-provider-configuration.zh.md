@@ -10,15 +10,15 @@ Copilot 订阅是许多贡献者本就拥有的 LLM 访问途径，但它并不�
 
 ## 决策
 
-Copilot 以配置方式在既有 seam 之上得到支持，[模型指南](../../../../docs/user/guide/providers.md)承载具体步骤。[`dsh-llm-pi-ai`](../../../../packages/llm/llm-pi-ai/README.md) 已经暴露该提供方所需的三个字段：用于铸造 token 的 `apiKeyEnv`、用于账户 API 主机的 `baseURL`，以及用于 `Copilot-Integration-Id` 的 `headers`。`github-copilot` 是一条声明了 api-key 认证方式的、已安装的 pi-ai 目录路由，因此 `catalogProviderTakesApiKey` 接纳它，适配器对它的认证方式与任何其他带密钥的路由完全一致。
+Copilot 以配置方式在既有 seam 之上得到支持，[模型指南](../../../../docs/user/guide/providers.zh.md)承载具体步骤。[`dsh-llm-pi-ai`](../../../../packages/llm/llm-pi-ai/README.zh.md) 已经暴露该提供方所需的三个字段：用于铸造 token 的 `apiKeyEnv`、用于账户 API 主机的 `baseURL`，以及用于 `Copilot-Integration-Id` 的 `headers`。`github-copilot` 是一条在 OAuth 之外还声明了 api-key 认证方式的、已安装的 pi-ai 目录路由，因此目录会提供它，而该路由的 `apiKeyEnv` 会作为请求中优先级最高的认证覆盖项完成认证。
 
-token 的有效期由凭据 seam 处理，而非由新代码处理。[`dsh-credentials-local`](../../../../packages/credentials/credentials-local/README.md) 对 `$DSH_HOME/.credentials.yaml` 热重载，因此重新执行一次交换即可在服务器运行期间替换存储值；无需重启，不经过进程环境层，`settings.yaml` 中也不出现密文。
+token 的有效期由凭据 seam 处理，而非由新代码处理。[`dsh-credentials-local`](../../../../packages/credentials/credentials-local/README.zh.md) 对 `$DSH_HOME/.credentials.yaml` 热重载，因此重新执行一次交换即可在服务器运行期间替换存储值；无需重启，不经过进程环境层，`settings.yaml` 中也不出现密文。
 
-本次没有随附任何适配器改动。pi-ai 提供了带设备流与刷新的 `githubCopilotOAuth`，但 `dsh-llm-pi-ai` 有意不持有 OAuth 凭据存储、也不运行登录流程，其 [catalog](../../../../packages/llm/llm-pi-ai/src/catalog.ts) 与 [provider](../../../../packages/llm/llm-pi-ai/src/provider.ts) 模块已将此表述为自有限制。正是 Copilot 的 api-key 方式让它无需越过这条界线即可接入。
+本次没有随附任何适配器改动。[`registerPiAiFlows`](../../../../packages/llm/llm-pi-ai/src/login.ts) 已在[授权 seam](../architecture/2026-08-13-credential-records-and-authorization-flows.zh.md) 上重述了 pi-ai 的各个登录流程，Copilot 的 OAuth 设备流也在其中，但没有任何界面能发起登录，因此 api-key 路径才是部署今天可达的那条。
 
 ## 曾考虑的替代方案
 
-**让 `dsh-llm-pi-ai` 驱动 pi-ai 的 OAuth 方式。** 这是无需外部铸造的版本：设备流登录一次即可自行刷新。它需要在适配器内引入 OAuth 凭据存储、登录交互和刷新归属方——正是该模块记载为缺失的能力，而且这会牵涉到 OAuth 凭据存放位置这一超出单个提供方范围的决策。api-key 路径今天已经能承载 Copilot，因此该存储可以等到某个没有 api-key 方式的提供方确有需要时再设计。
+**从某个界面驱动 pi-ai 的 OAuth 方式。** 这是无需外部铸造的版本：设备流登录一次即可自行刷新。凭据存储、流程本身与刷新归属方均已具备，缺的是发起登录的传输约定与模型页控件——那是关于登录界面的决策，而非关于本提供方的决策。在其落地之前，api-key 路径承载 Copilot。
 
 **在插件内铸造 token。** 凭据提供方插件或 LLM 插件可以按请求交换编辑器 OAuth token 并保持其新鲜。它换来自动刷新，代价是引入一个读取另一应用凭据文件、并在请求路径上承担一次网络交换的包；而同样的刷新用一个定时任务加一条文档化命令即可完成。
 
