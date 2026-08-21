@@ -60,6 +60,33 @@ function toPiCredential(record: CredentialRecord | undefined): Credential | unde
 }
 
 /**
+ * Drop the object properties a JSON round trip would drop.
+ *
+ * A grant payload must survive that round trip, and `JSON.stringify` omits an
+ * `undefined` property rather than encoding it — so such a property already
+ * means "absent" in the stored record, while the store's own guard sees a value
+ * JSON cannot represent and refuses the whole write. pi-ai's OAuth credentials
+ * carry their optional fields this way (`enterpriseUrl` is `undefined` for a
+ * sign-in against github.com rather than a GitHub Enterprise Server), which is
+ * what makes normalizing here the difference between a login that commits and
+ * one that fails after the human has already approved it.
+ *
+ * Only `undefined` is normalized. Anything else JSON cannot represent — a
+ * `Date`, a function, a `bigint`, an `undefined` array element — still reaches
+ * the store and fails the write loudly, because those genuinely lose data.
+ * @param value - one node of the credential being committed.
+ * @returns the node with `undefined`-valued properties removed.
+ */
+function jsonRepresentable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(jsonRepresentable)
+  if (typeof value !== 'object' || value === null) return value
+  if (Object.getPrototypeOf(value) !== Object.prototype) return value
+  return Object.fromEntries(Object.entries(value)
+    .filter(([, nested]) => nested !== undefined)
+    .map(([key, nested]) => [key, jsonRepresentable(nested)]))
+}
+
+/**
  * Translate a pi-ai credential into the record to store.
  * @param credential - what a login or refresh produced.
  * @returns the record to commit, in the union the credential seam stores.
@@ -72,7 +99,7 @@ function toRecord(credential: Credential): CredentialRecord {
       ...credential.env === undefined ? {} : { env: { ...credential.env } },
     }
   }
-  return { kind: 'grant', payload: credential }
+  return { kind: 'grant', payload: jsonRepresentable(credential) }
 }
 
 /**

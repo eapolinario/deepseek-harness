@@ -64,6 +64,45 @@ describe('pi-ai credential store over harness records', () => {
     await expect(ctx.credentials.readRecord(CODEX)).resolves.toEqual({ kind: 'grant', payload: granted })
   })
 
+  it('commits an OAuth credential whose absent optional field is an explicit undefined', async () => {
+    const ctx = await stored()
+    const store = credentialStoreFrom(ctx)
+    // What pi-ai's GitHub Copilot login returns for a github.com account: the
+    // enterprise field is present and undefined rather than omitted, which the
+    // store refuses as a value JSON cannot represent.
+    const granted = {
+      type: 'oauth' as const,
+      access: 'at',
+      refresh: 'rt',
+      expires: 42,
+      enterpriseUrl: undefined,
+      availableModelIds: ['claude-opus-5', 'gpt-5.5'],
+    }
+
+    await store.modify('github-copilot', () => Promise.resolve(granted))
+
+    await expect(ctx.credentials.readRecord(recordKeyFor('github-copilot'))).resolves.toEqual({
+      kind: 'grant',
+      payload: {
+        type: 'oauth',
+        access: 'at',
+        refresh: 'rt',
+        expires: 42,
+        availableModelIds: ['claude-opus-5', 'gpt-5.5'],
+      },
+    })
+  })
+
+  it('still refuses a grant payload holding a value JSON cannot represent', async () => {
+    const store = credentialStoreFrom(await stored())
+    // A Date loses its type through the round trip rather than describing an
+    // absent field, so it fails the write instead of being normalized away.
+    const granted = { type: 'oauth' as const, access: 'at', refresh: 'rt', expires: 42, issued: new Date() }
+
+    await expect(store.modify('github-copilot', () => Promise.resolve(granted)))
+      .rejects.toThrow(/JSON cannot represent/)
+  })
+
   it('shows the mutation the current credential and leaves it alone when declined', async () => {
     const store = credentialStoreFrom(await stored())
     await store.modify('openai-codex', () =>
